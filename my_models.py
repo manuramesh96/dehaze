@@ -102,10 +102,46 @@ class Autoencoder3(nn.Module):
 		x = self.decoder(x)
 		return x
 
+class Autoencoder4(nn.Module): #from ai homework
+  '''
+  15 epoch, avg test loss = ?
+  from AI Homework
+  '''
+  def __init__(self):
+    super(Autoencoder4, self).__init__()
+
+    # encoder
+    self.n_channels = 3 #number of input channels
+    self.n_latent = 4
+
+    self.conv1 = nn.Conv2d(self.n_channels, 5, kernel_size=2, stride=2)
+    self.conv2 = nn.Conv2d(5, 10, kernel_size=2, stride=2)
+    self.conv3 = nn.Conv2d(10, self.n_latent, kernel_size=2, stride=1)
+
+    # decoder
+    self.tran_conv1 = nn.ConvTranspose2d(self.n_latent, 10, kernel_size=2, stride=1)
+    self.tran_conv2 = nn.ConvTranspose2d(10, 5, kernel_size=2, stride=2)
+    self.tran_conv3 = nn.ConvTranspose2d(5, self.n_channels, kernel_size=2, stride=2)
+
+
+  def forward(self, x):
+
+    # encoding layers
+    x = F.relu(self.conv1(x))
+    x = F.relu(self.conv2(x))
+    x = F.relu(self.conv3(x))
+
+    # decoding layers
+    x = F.relu(self.tran_conv1(x))
+    x = F.relu(self.tran_conv2(x))
+    x = torch.sigmoid(self.tran_conv3(x))
+    
+    return x
+
 
 if __name__ == "__main__":
 
-	model = Autoencoder2()
+	model = Autoencoder4()
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	model = model.to(device)
 

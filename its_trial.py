@@ -6,6 +6,12 @@ from matplotlib import pyplot as plt
 from ITS_Dataset import ITS_Dataset
 from my_models import Autoencoder2  
 from my_models import Autoencoder3  
+from my_models import Autoencoder4  
+from dehaze1113 import Dense_rain_cvprw3 as zhangAE
+
+from psnr import PSNR
+from psnr import SSIM
+from myTransforms import ToPillowImg
 
 from torch.utils.data import Dataset, DataLoader
 import torchvision.models as models
@@ -28,8 +34,17 @@ transform = transforms.Compose([
     ])
 '''
 
+'''
+#Working
 transform = transforms.Compose([
-	transforms.Resize((300,400)),
+	transforms.Resize((256,256)),
+        transforms.ToTensor()
+    ])
+'''
+
+transform = transforms.Compose([
+	ToPillowImg(),
+	transforms.Resize((256,256)),
         transforms.ToTensor()
     ])
 
@@ -142,13 +157,14 @@ def get_loaders(batch_size_train, batch_size_test):
 	return train_loader, test_loader
 
 	
-def train(model, epochs, train_loader):
+def train(model, epochs, train_loader, saveName = "myModel"):
 	model.to(device)
 	model.train()
-	#criterion = torch.nn.CrossEntropyLoss() 
-	criterion = nn.MSELoss()
 
-	learning_rate = 1e-3
+	criterion = nn.BCELoss()
+	#criterion = nn.MSELoss()
+
+	learning_rate = 1e-2 #1e-4 #1e-3
 	#optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9) 
 	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
 
@@ -167,6 +183,8 @@ def train(model, epochs, train_loader):
 			optimizer.zero_grad() #clearing all gradients
 			outputs = model(hazyImgs)
 
+			#print(f"Inputs size = {clearImgs.size()}")
+			#print(f"Outputs size = {outputs.size()}")
 			
 			loss = criterion(outputs, clearImgs)
 			loss.backward()
@@ -186,7 +204,7 @@ def train(model, epochs, train_loader):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
-            }, f'./states/ac2_{epochs}-epch_states.p')
+            }, f'./states/{saveName}_{epochs}-epch_states.p')
 	
 
 
@@ -211,6 +229,7 @@ def test(model, test_loader, device,  checkpoint_path):
 			clearImgs = batch['clearImg'].to(device)
 
 			outputs = model(hazyImgs)
+
 			loss = criterion(outputs, clearImgs)
 	
 			avg_loss += loss.item()
@@ -230,8 +249,14 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 
 	print(f"Outputs sampler: device = {device}")
 	model.to(device)
+
+	#for  my states
 	checkpoint = torch.load(checkpoint_path)
 	model.load_state_dict(checkpoint['model_state_dict'])
+	
+	#for zhang
+	#model.apply(weights_init) #weights_init undefined
+	#model.load_state_dict(torch.load(checkpoint_path))
 	
 	n_images = 5 #save 5 images
 
@@ -249,7 +274,8 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 			clearImgs = batch['clearImg'].to(device)
 			
 			outputs = model(hazyImgs)
-		
+			
+			hazyImgs = hazyImgs.cpu()	
 			outputs = outputs.cpu()
 			clearImgs = clearImgs.cpu()
 			#outputs = outputs.numpy()
@@ -259,6 +285,9 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 			
 			for i in range(n_images):
 				#out_img = np.zeros((outputs.shape[2], 2*outputs.shape[3]), np.uint8)
+				hazyImg = torch.squeeze(hazyImgs[i]).permute(1,2,0)
+				hazyImg = hazyImg.numpy()
+
 				pred_img = torch.squeeze(outputs[i]).permute(1,2,0)
 				pred_img = pred_img.numpy()
 
@@ -268,8 +297,14 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 				print(f"pred image size = {pred_img.shape}")
 				print(f"clear image size = {clearImg.shape}")
 
-				big_img = np.concatenate((pred_img, clearImg), axis = 1)
+				big_img = np.concatenate((hazyImg, pred_img, clearImg), axis = 1)
 				print(f"Big image shape = {big_img.shape}")
+
+				psnr = PSNR()
+				#ssim = SSIM()
+				print(f"PSNR = {psnr(torch.tensor(hazyImg),torch.tensor(clearImg))}")
+				#ssim code isn't working
+				#print(f" SSIM = {ssim(torch.tensor(hazyImg),torch.tensor(clearImg))}")
 
 				#big_img =  Image.fromarray(np.uint8(big_img))
 				#big_img =  Image.fromarray(np.uint8(big_img)*255)
@@ -279,8 +314,12 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 			break
 
 def make_model():
-	#model  = Autoencoder3()
-	model  = Autoencoder2()
+	model  = zhangAE() #from zhang
+	#model.load
+
+	#model  = Autoencoder4() #from AI homework
+	#model  = Autoencoder3() #grayscale images
+	#model  = Autoencoder2()
 	return model
 
 
@@ -289,11 +328,12 @@ if __name__ == "__main__":
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print(f'cuda available = {torch.cuda.is_available()}, Device = {device}')
 
+	modelName = "zhang"
 	model  = make_model()
 	#print('Model = ', vars(model))
  
-	epochs = 1
-	batch_size_train = 256 #128 #16
+	epochs = 3
+	batch_size_train = 32 #16 #256 #128 #16
 	batch_size_test = 16 #256
 
 	train_loader, test_loader = get_loaders(batch_size_train, batch_size_test)
@@ -303,18 +343,19 @@ if __name__ == "__main__":
 	#print(sample)
 	sample = torch.squeeze(sample['hazyImg'][0]).permute(2,1,0)
 	sample = sample.numpy()
-	print('sample = \n', sample)
+	#print('sample = \n', sample)
 	
 	cv2.imwrite('../outputs/sample.jpg',np.uint8(sample*255))
 
 
-	trial1_1()
+	#trial1_1()
 	#trial1_2()
 	#trial1_3()
-	#train(model=model, epochs=epochs, train_loader=train_loader)
+	train(model=model, epochs=epochs, train_loader=train_loader, saveName = modelName)
 
 	#test(model=model, test_loader=test_loader, device=device,  checkpoint_path="./states/ac2_1-epch_states.p")
 
-	sample_outputs(model, test_loader, device, checkpoint_path="./states/ac2_1-epch_states.p")
+	sample_outputs(model, test_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	#sample_outputs(model, test_loader, device, checkpoint_path=f"../zhang/code/pretrained_models/netG_epoch_23000.pth") #zhang
 
 	pass
