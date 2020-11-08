@@ -8,6 +8,7 @@ from my_models import Autoencoder2
 from my_models import Autoencoder3  
 from my_models import Autoencoder4  
 from my_models import AutoEncoder5 #zhang+ren  
+from my_models import AutoEncoder6 #zhang+ren2
 from dehaze1113 import Dense_rain_cvprw3 as zhangAE
 
 #from psnr import PSNR
@@ -307,29 +308,23 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 
 				#psnr = PSNR()
 				#ssim = SSIM()
-				print(f"PSNR = {psnr(torch.tensor(clearImg),torch.tensor(hazyImg))}")
-				#print(f" SSIM = {ssim(torch.tensor(clearImg),torch.tensor(hazyImg), multichannel=True)}")
-				print(f" SSIM = {ssim(clearImg, hazyImg, multichannel=True)}")
+				print(f"PSNR = {psnr(torch.tensor(hazyImg),torch.tensor(clearImg))}")
+				#print(f" SSIM = {ssim(torch.tensor(hazyImg),torch.tensor(clearImg))}")
+				print(f" SSIM = {ssim(hazyImg, clearImg, multichannel=True)}")
 
 				#big_img =  Image.fromarray(np.uint8(big_img))
 				#big_img =  Image.fromarray(np.uint8(big_img)*255)
 
 				#big_img.save(f"../outputs/outImage_{i}.jpg")
-				#cv2.imwrite(f"../outputs/outImage_{i}.jpg", np.uint8(big_img*255))
-				cv2.imwrite(f"../outputs/outImage_{i}.jpg", cv2.cvtColor(np.uint8(big_img*255), cv2.COLOR_RGB2BGR))
-
-				'''
-				bigImg = np.uint8(big_img*255)	
-				bigImg = cv2.cvtColor(bigImg, cv2.COLOR_RGB2BGR)
-				print(f"big image shape = {bigImg.shape}")
-				cv2.imwrite(f"../outputs/outImage_{i}.jpg", big_img)
-				'''
+				#cv2.imwrite(f"../outputs/outImage2_{i}.jpg", np.uint8(big_img*255))
+				cv2.imwrite(f"../outputs/outImage2_{i}.jpg", cv2.cvtColor(np.uint8(big_img*255), cv2.COLOR_RGB2BGR)) #because cv2 saves bgr
 			break
 
 def make_model(device):
 
+	model  = AutoEncoder6(device=device) #zhang+ren2, mind the big E
 	#model  = AutoEncoder5(device=device) #zhang+ren, mind the big E
-	model  = zhangAE() #from zhang
+	#model  = zhangAE() #from zhang
 	#model.load
 
 	#model  = Autoencoder4() #from AI homework
@@ -340,17 +335,15 @@ def make_model(device):
 
 if __name__ == "__main__":
 
-	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+	device = "cpu" #torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 	print(f'cuda available = {torch.cuda.is_available()}, Device = {device}')
 
-	#modelName = "zhang_ren"
-	modelName = "zhang"
-
+	modelName = "zhang_ren2"
 	model  = make_model(device=device)
 	#print('Model = ', vars(model))
  
-	epochs = 1 #3 #1
-	batch_size_train = 12 #8 #32 #16 #256 #128 #16
+	epochs = 1
+	batch_size_train = 8 #4 #8 #32 #16 #256 #128 #16
 	batch_size_test = 16 #256
 
 	train_loader, test_loader = get_loaders(batch_size_train, batch_size_test)
@@ -368,7 +361,7 @@ if __name__ == "__main__":
 	#trial1_1()
 	#trial1_2()
 	#trial1_3()
-	train(model=model, epochs=epochs, train_loader=train_loader, saveName = modelName)
+	#train(model=model, epochs=epochs, train_loader=train_loader, saveName = modelName)
 
 	#test(model=model, test_loader=test_loader, device=device,  checkpoint_path="./states/ac2_1-epch_states.p")
 

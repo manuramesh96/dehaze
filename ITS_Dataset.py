@@ -10,8 +10,6 @@ from torchvision import transforms, utils
 from PIL import Image
 import cv2
 
-from myTransforms import RenAugmentImg()
-
 class ITS_Dataset(Dataset):
 	'''ITS Dataset'''
 
@@ -28,6 +26,7 @@ class ITS_Dataset(Dataset):
                  self.its_frame = pd.read_csv(csv_file)
                  self.root_dir = root_dir
                  self.transform = transform
+                 self.renAugment = renAugment
 
 	def __len__(self):
 		return len(self.its_frame)
@@ -48,13 +47,11 @@ class ITS_Dataset(Dataset):
 		#hazyImg = cv2.cvtColor(hazyImg, cv2.COLOR_GRAY2RGB)
 		#clearImg = cv2.cvtColor(clearImg, cv2.COLOR_GRAY2RGB)
 
-		if renAugment == True:
-			renAg = RenAugmentImg()
-			hazyImg = renAg(hazyImg)
+		hazyImg = cv2.cvtColor(hazyImg, cv2.COLOR_BGR2RGB)
+		clearImg = cv2.cvtColor(clearImg, cv2.COLOR_BGR2RGB)
 
-		#temp commenting for trial
-		#hazyImg = Image.fromarray(hazyImg)
-		#clearImg = Image.fromarray(clearImg)
+		hazyImg = Image.fromarray(hazyImg)
+		clearImg = Image.fromarray(clearImg)
 
 		sample = {'hazyImg': hazyImg, 'clearImg': clearImg}
 
