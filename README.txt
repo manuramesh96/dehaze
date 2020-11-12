@@ -1,17 +1,32 @@
-************************************************
+********************************************************************************
 ECE 570 Artificial Intelligence - Course project
 Fall 2020 
 Purdue University
 
 Author: Manu Ramesh
-***********************************************
+********************************************************************************
 
 Dataset can be downloaded from:
 
 https://sites.google.com/view/reside-dehaze-datasets/reside-v0
 I have taken the Indoor Training Set (ITS)
 
-----------------------------------------------
+Links of implementations of selected papers:
+
+GAN Paper
+Enhanced Pix2Pix Dehazing Network: Qu et al:
+https://github.com/ErinChen1/EPDN
+
+Autoencoder Papers:
+
+Multi-scale Single Image Dehazing using Perceptual Pyramid Deep Network: Zhang et al:
+https://github.com/hezhangsprinter/NTIRE-2018-Dehazing-Challenge
+
+Gated Fusion Network for Single Image Dehazing: Ren et al:
+https://github.com/rwenqi/GFN-dehazing
+https://sites.google.com/site/renwenqi888/research/dehazing/gfn
+
+--------------------------------------------------------------------------------
 
 File descriptions
 
