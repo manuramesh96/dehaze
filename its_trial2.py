@@ -29,6 +29,12 @@ import PIL
 from PIL import Image
 import cv2
 
+#get functions from its_trial py
+from its_trial import get_test100_loader
+from its_trial import test100
+from its_trial import sample_test100_outputs
+from its_trial import sample_test100_outputs2
+
 '''
 transform = transforms.Compose([
         transforms.RandomResizedCrop(224),
@@ -54,6 +60,9 @@ transform = transforms.Compose([
 '''
 
 its_dataset = ITS_Dataset('../datasets/ITS_subset_annotation.csv','../datasets/ITS/',transform=transform) #much smaller dataset - 4650 images
+
+its_test100_dataset = ITS_Dataset('../datasets/ITS_subset_test_annotation.csv','../datasets/ITS/',transform=transform) #test set of smaller dataset with 100 sequestered images
+
 #its_dataset = ITS_Dataset('../datasets/ITS_annotation.csv','../datasets/ITS/',transform=transform)
 #its_dataset = ITS_Dataset('../datasets/ITS_annotation.csv','../datasets/ITS/')
 
@@ -365,7 +374,13 @@ if __name__ == "__main__":
 
 	#test(model=model, test_loader=test_loader, device=device,  checkpoint_path="./states/ac2_1-epch_states.p")
 
-	sample_outputs(model, test_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	test100_loader = get_test100_loader(batch_size_test)
+	#test100(model=model, test100_loader=test100_loader, device=device,  checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+
+	sample_test100_outputs2(model, test100_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p", modelName=modelName)
+	#sample_test100_outputs(model, test100_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+
+	#sample_outputs(model, test_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
 	#sample_outputs(model, test_loader, device, checkpoint_path=f"../zhang/code/pretrained_models/netG_epoch_23000.pth") #zhang
 
 	pass

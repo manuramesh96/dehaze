@@ -53,6 +53,9 @@ transform = transforms.Compose([
 '''
 
 its_dataset = ITS_Dataset('../datasets/ITS_subset_annotation.csv','../datasets/ITS/',transform=transform) #much smaller dataset - 4650 images
+
+its_test100_dataset = ITS_Dataset('../datasets/ITS_subset_test_annotation.csv','../datasets/ITS/',transform=transform) #test set of smaller dataset with 100 sequestered images
+
 #its_dataset = ITS_Dataset('../datasets/ITS_annotation.csv','../datasets/ITS/',transform=transform)
 #its_dataset = ITS_Dataset('../datasets/ITS_annotation.csv','../datasets/ITS/')
 
@@ -161,6 +164,11 @@ def get_loaders(batch_size_train, batch_size_test):
 	
 	return train_loader, test_loader
 
+def get_test100_loader(batch_size_test):
+
+	test100_loader  = DataLoader(its_test100_dataset, batch_size=batch_size_test,shuffle=False, num_workers=4)
+
+	return test100_loader
 	
 def train(model, epochs, train_loader, saveName = "myModel"):
 	model.to(device)
@@ -249,6 +257,70 @@ def test(model, test_loader, device,  checkpoint_path):
 	print(f"Average testing loss for approx {n_samples} test images = {avg_loss}")
 	#approx because last batch need not have batch_size no of test images
 
+#test from the sequester test set of the smaller subset. The test set has 100 images
+def test100(model, test100_loader, device,  checkpoint_path):
+
+	print(f"Evaluation: device = {device}")
+	model.to(device)
+	checkpoint = torch.load(checkpoint_path)
+	model.load_state_dict(checkpoint['model_state_dict'])
+
+
+	criterion = nn.MSELoss()
+	avg_loss = 0 
+	n_batches = 0
+
+	avg_psnr = 0
+	avg_ssim = 0
+	no_samples = 0 #redundancy - my way, last batch might not have batch size number of elements
+
+	print(f"Running model evaluation on test100 dataset with states from {checkpoint_path}")
+	
+	with torch.no_grad():
+		for idx, batch  in enumerate(test100_loader):
+
+			hazyImgs = batch['hazyImg'].to(device)
+			clearImgs = batch['clearImg'].to(device)
+
+			outputs = model(hazyImgs)
+
+			loss = criterion(outputs, clearImgs)
+	
+			avg_loss += loss.item()
+			n_batches = idx
+			
+			hazyImgs = hazyImgs.cpu()	
+			outputs = outputs.cpu()
+			clearImgs = clearImgs.cpu()
+		
+			for i in range(len(outputs)):	
+
+				hazyImg = torch.squeeze(hazyImgs[i]).permute(1,2,0)
+				hazyImg = hazyImg.numpy()
+
+				pred_img = torch.squeeze(outputs[i]).permute(1,2,0)
+				pred_img = pred_img.numpy()
+
+				clearImg = torch.squeeze(clearImgs[i]).permute(1,2,0)
+				clearImg = clearImg.numpy()
+
+				avg_psnr += psnr(torch.tensor(clearImg),torch.tensor(pred_img))
+				avg_ssim += ssim(clearImg, pred_img, multichannel=True)
+				no_samples += 1
+
+
+	n_samples = n_batches * test100_loader.batch_size					
+	avg_loss /= (n_samples)
+
+	avg_psnr /= no_samples
+	avg_ssim /= no_samples
+
+	print(f"Test100: Average testing loss for approx {n_samples} test images = {avg_loss}")
+	#approx because last batch need not have batch_size no of test images
+	print(f"Test100: Number of samples = {no_samples}")
+	print(f"Test100: Average PSNR = {avg_psnr}")
+	print(f"Test100: Average SSIM = {avg_ssim}")
+
 
 def sample_outputs(model, test_loader, device, checkpoint_path):
 
@@ -307,9 +379,9 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 
 				#psnr = PSNR()
 				#ssim = SSIM()
-				print(f"PSNR = {psnr(torch.tensor(clearImg),torch.tensor(hazyImg))}")
+				print(f"PSNR = {psnr(torch.tensor(clearImg),torch.tensor(pred_img))}")
 				#print(f" SSIM = {ssim(torch.tensor(clearImg),torch.tensor(hazyImg), multichannel=True)}")
-				print(f" SSIM = {ssim(clearImg, hazyImg, multichannel=True)}")
+				print(f" SSIM = {ssim(clearImg, pred_img, multichannel=True)}")
 
 				#big_img =  Image.fromarray(np.uint8(big_img))
 				#big_img =  Image.fromarray(np.uint8(big_img)*255)
@@ -326,13 +398,184 @@ def sample_outputs(model, test_loader, device, checkpoint_path):
 				'''
 			break
 
+
+
+def sample_test100_outputs(model, test_loader, device, checkpoint_path):
+
+	print(f"Outputs sampler: device = {device}")
+	model.to(device)
+
+	#for  my states
+	checkpoint = torch.load(checkpoint_path)
+	model.load_state_dict(checkpoint['model_state_dict'])
+	
+	#for zhang
+	#model.apply(weights_init) #weights_init undefined
+	#model.load_state_dict(torch.load(checkpoint_path))
+	
+	n_images = 1 #save 1 image per batch
+	imgCounter = 0
+
+	criterion = nn.MSELoss()
+	avg_loss = 0 
+	n_batches = 0
+
+	print(f"Running output sampling with model states from {checkpoint_path}")
+	
+	with torch.no_grad():
+		for idx, batch  in enumerate(test_loader):
+
+			hazyImgs = batch['hazyImg'].to(device)
+			clearImgs = batch['clearImg'].to(device)
+			
+			outputs = model(hazyImgs)
+			
+			hazyImgs = hazyImgs.cpu()	
+			outputs = outputs.cpu()
+			clearImgs = clearImgs.cpu()
+			#outputs = outputs.numpy()
+	
+			#print(f"Outputs size = {outputs.shape}")
+			#shape = batch x ch x h x w
+			
+			#for i in range(n_images):
+			for j in range(n_images):
+
+				#to get some other outputs, add offset
+				if len(outputs) == test_loader.batch_size:
+					i = j + 10
+				else:
+					i = j
+
+				#out_img = np.zeros((outputs.shape[2], 2*outputs.shape[3]), np.uint8)
+				hazyImg = torch.squeeze(hazyImgs[i]).permute(1,2,0)
+				hazyImg = hazyImg.numpy()
+
+				pred_img = torch.squeeze(outputs[i]).permute(1,2,0)
+				pred_img = pred_img.numpy()
+
+				clearImg = torch.squeeze(clearImgs[i]).permute(1,2,0)
+				clearImg = clearImg.numpy()
+				
+				print(f"pred image size = {pred_img.shape}")
+				print(f"clear image size = {clearImg.shape}")
+
+				big_img = np.concatenate((hazyImg, pred_img, clearImg), axis = 1)
+				print(f"Big image shape = {big_img.shape}")
+
+				#psnr = PSNR()
+				#ssim = SSIM()
+				print(f"PSNR = {psnr(torch.tensor(clearImg),torch.tensor(pred_img))}")
+				#print(f" SSIM = {ssim(torch.tensor(clearImg),torch.tensor(hazyImg), multichannel=True)}")
+				print(f" SSIM = {ssim(clearImg, pred_img, multichannel=True)}")
+
+				#big_img =  Image.fromarray(np.uint8(big_img))
+				#big_img =  Image.fromarray(np.uint8(big_img)*255)
+
+				#big_img.save(f"../outputs/outImage_{i}.jpg")
+				#cv2.imwrite(f"../outputs/outImage_{i}.jpg", np.uint8(big_img*255))
+				cv2.imwrite(f"../outputs/outImage_{imgCounter}.jpg", cv2.cvtColor(np.uint8(big_img*255), cv2.COLOR_RGB2BGR))
+				
+				imgCounter += 1
+			#break
+
+
+def sample_test100_outputs2(model, test_loader, device, checkpoint_path, modelName='sample'):
+
+	'''
+	samples all 100 images
+	'''
+
+	print(f"Outputs sampler: device = {device}")
+	model.to(device)
+
+	#for  my states
+	checkpoint = torch.load(checkpoint_path)
+	model.load_state_dict(checkpoint['model_state_dict'])
+	
+	#for zhang
+	#model.apply(weights_init) #weights_init undefined
+	#model.load_state_dict(torch.load(checkpoint_path))
+	
+	n_images = 1 #save 1 image per batch
+	imgCounter = 0
+
+	criterion = nn.MSELoss()
+	avg_loss = 0 
+	n_batches = 0
+
+	psnrList = []
+	ssimList = []
+
+	print(f"Running output sampling with model states from {checkpoint_path}")
+	
+	with torch.no_grad():
+		for idx, batch  in enumerate(test_loader):
+
+			hazyImgs = batch['hazyImg'].to(device)
+			clearImgs = batch['clearImg'].to(device)
+			
+			outputs = model(hazyImgs)
+			
+			hazyImgs = hazyImgs.cpu()	
+			outputs = outputs.cpu()
+			clearImgs = clearImgs.cpu()
+			#outputs = outputs.numpy()
+	
+			#print(f"Outputs size = {outputs.shape}")
+			#shape = batch x ch x h x w
+			
+			for i in range(len(outputs)):
+
+				#out_img = np.zeros((outputs.shape[2], 2*outputs.shape[3]), np.uint8)
+				hazyImg = torch.squeeze(hazyImgs[i]).permute(1,2,0)
+				hazyImg = hazyImg.numpy()
+
+				pred_img = torch.squeeze(outputs[i]).permute(1,2,0)
+				pred_img = pred_img.numpy()
+
+				clearImg = torch.squeeze(clearImgs[i]).permute(1,2,0)
+				clearImg = clearImg.numpy()
+				
+				print(f"pred image size = {pred_img.shape}")
+				print(f"clear image size = {clearImg.shape}")
+
+				big_img = np.concatenate((hazyImg, pred_img, clearImg), axis = 1)
+				print(f"Big image shape = {big_img.shape}")
+
+				psnrVal = psnr(torch.tensor(clearImg),torch.tensor(pred_img))
+				ssimVal = ssim(clearImg, pred_img, multichannel=True)
+
+				print(f"PSNR = {psnrVal}")
+				print(f" SSIM = {ssimVal}")
+
+				psnrList.append(psnrVal)
+				ssimList.append(ssimVal)
+
+				#big_img =  Image.fromarray(np.uint8(big_img))
+				#big_img =  Image.fromarray(np.uint8(big_img)*255)
+
+				#big_img.save(f"../outputs/outImage_{i}.jpg")
+				#cv2.imwrite(f"../outputs/outImage_{i}.jpg", np.uint8(big_img*255))
+				#cv2.imwrite(f"../outputs/outImage_{imgCounter}.jpg", cv2.cvtColor(np.uint8(big_img*255), cv2.COLOR_RGB2BGR))
+				
+				cv2.imwrite(f"../final_outputs/{imgCounter}_hazy.jpg", cv2.cvtColor(np.uint8(hazyImg*255), cv2.COLOR_RGB2BGR))
+				cv2.imwrite(f"../final_outputs/{imgCounter}_clear.jpg", cv2.cvtColor(np.uint8(clearImg*255), cv2.COLOR_RGB2BGR))
+				cv2.imwrite(f"../final_outputs/{imgCounter}_pred_{modelName}.jpg", cv2.cvtColor(np.uint8(pred_img*255), cv2.COLOR_RGB2BGR))
+				imgCounter += 1
+			#break
+	pickle.dump(psnrList, open(f"../final_outputs/{modelName}_psnrList.p", 'wb'))
+	pickle.dump(ssimList, open(f"../final_outputs/{modelName}_ssimList.p", 'wb'))
+
+
+
 def make_model(device):
 
 	#model  = AutoEncoder5(device=device) #zhang+ren, mind the big E
 	model  = zhangAE() #from zhang
 	#model.load
 
-	#model  = Autoencoder4() #from AI homework
+	model  = Autoencoder4() #from AI homework
 	#model  = Autoencoder3() #grayscale images
 	#model  = Autoencoder2()
 	return model
@@ -343,8 +586,9 @@ if __name__ == "__main__":
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 	print(f'cuda available = {torch.cuda.is_available()}, Device = {device}')
 
-	#modelName = "zhang_ren"
-	modelName = "zhang"
+	modelName = "zhang_ren"
+	#modelName = "zhang"
+	#modelName = "ae4"
 
 	model  = make_model(device=device)
 	#print('Model = ', vars(model))
@@ -372,7 +616,13 @@ if __name__ == "__main__":
 
 	#test(model=model, test_loader=test_loader, device=device,  checkpoint_path="./states/ac2_1-epch_states.p")
 
-	sample_outputs(model, test_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	test100_loader = get_test100_loader(batch_size_test)
+	test100(model=model, test100_loader=test100_loader, device=device,  checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	
+	sample_test100_outputs2(model, test100_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p", modelName=modelName)
+	#sample_test100_outputs(model, test100_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	#sample_outputs(model, test100_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
+	#sample_outputs(model, test_loader, device, checkpoint_path=f"./states/{modelName}_{epochs}-epch_states.p")
 	#sample_outputs(model, test_loader, device, checkpoint_path=f"../zhang/code/pretrained_models/netG_epoch_23000.pth") #zhang
 
 	pass

@@ -147,7 +147,7 @@ class Autoencoder4(nn.Module): #from ai homework
 
 
 #mixes ZHang and Ren
-class AutoEncoder5(nn.Module): #from ai homework
+class AutoEncoder5(nn.Module):
   '''
   only Zhang one epoch - loss around 2.00
   send in 256x256 images

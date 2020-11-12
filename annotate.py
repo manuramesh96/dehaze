@@ -78,8 +78,8 @@ def create_smaller_dataset():
 			#calling random functions again will alter random state
 			#q = random.uniform(0,1)
 			#q can be any number, but i need a more spread
-			
-			if p <= 0.10 and testCounter < maxTestImages: 
+			#p<=0.10 - didn't give much spread
+			if p <= 0.052 and testCounter < maxTestImages: 
 				testCSV.writerow(row)
 				testCounter += 1
 
