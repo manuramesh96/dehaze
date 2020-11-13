@@ -4,6 +4,8 @@ Fall 2020
 Purdue University
 
 Author: Manu Ramesh
+
+Source code at: https://github.com/manuramesh96/dehaze
 ********************************************************************************
 
 Dataset can be downloaded from:
