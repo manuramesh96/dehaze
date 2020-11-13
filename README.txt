@@ -98,10 +98,10 @@ Some code snippets  might be from pytorch tutorials, stackoverflow and other sou
 ------------------------------------------------------------------------------------
 Tu run experiments,
 run the its_trial.py and its_trial2.py files.
-Make sure the train(), test() and sample() functions are uncommented.
+Make sure the train(), test100() and sample_test100_outputs2() functions are uncommented.
 They are all you need to run.
 Do not run the trial1_#() functions. 
-The top most uncommented line can be used for the sample_test100_outputs function.
+The top most uncommented line can be used for the sample_test100_outputs2 function.
 
 
 Order of execution-
