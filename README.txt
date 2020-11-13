@@ -98,6 +98,15 @@ Some code snippets  might be from pytorch tutorials, stackoverflow and other sou
 ------------------------------------------------------------------------------------
 Tu run experiments,
 run the its_trial.py and its_trial2.py files.
+Make sure the train(), test() and sample() functions are uncommented.
+They are all you need to run.
+Do not run the trial1_#() functions. 
+The top most uncommented line can be used for the sample_test100_outputs function.
 
 
+Order of execution-
+First download ITS dataset and extract it
+Run both the functions in annotate.py to create smaller dataset csv files.
+Then run the its_trial functions!
 
+-------------------------------------------------------------------------------------
